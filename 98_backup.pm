@@ -236,10 +236,10 @@ sub createArchiv($$$) {
     my $cmd = '';
     if ( !defined($backupcmd) ) {
         if ( lc($symlink) eq 'no' ) {
-            $tarOpts = 'cf';
+            $tarOpts = 'cfz';
         }
         else {
-            $tarOpts = 'chf';
+            $tarOpts = 'chfz';
         }
 
 # prevents tar's output of "Removing leading /" and return total bytes of

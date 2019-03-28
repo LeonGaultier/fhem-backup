@@ -56,6 +56,7 @@ use GPUtils qw(GP_Import)
 BEGIN {
     GP_Import(
         qw(AttrVal
+          InternalVal
           gettimeofday
           ResolveDateWildcards
           attr
@@ -66,7 +67,8 @@ BEGIN {
           TimeNow
           BC_searchTelnet
           BC_telnetDevice
-          DoTrigger)
+          DoTrigger
+          devspec2array)
     );
 }
 
@@ -76,10 +78,9 @@ sub CommandBackup($$) {
     my ( $cl, $param ) = @_;
 
     my $byUpdate = ( $param && $param eq 'startedByUpdate' );
-    my $modpath    = AttrVal( 'global', 'modpath',    '' );
+    my $modpath    = AttrVal( 'global', 'modpath', '' );
     my $configfile = AttrVal( 'global', 'configfile', '' );
     my $statefile  = AttrVal( 'global', 'statefile',  '' );
-    my $logDir     = AttrVal( 'global', 'logdir',     'none' );
     my $now        = gettimeofday();
     my @t          = localtime($now);
     $statefile = ResolveDateWildcards( $statefile, @t );
@@ -138,8 +139,8 @@ sub CommandBackup($$) {
 
     $ret = readModpath( $modpath, $backupdir );
 
-    ## add extra logdir path to backup
-    push( @pathname, $logDir ) if ( $logDir ne 'none' );
+    ## add all logfile path to pathname array
+    $ret = addLogPathToPathnameArray($modpath);
 
     # create archiv
     $ret = createArchiv( $backupdir, $cl, $byUpdate );
@@ -236,10 +237,10 @@ sub createArchiv($$$) {
     my $cmd = '';
     if ( !defined($backupcmd) ) {
         if ( lc($symlink) eq 'no' ) {
-            $tarOpts = 'cfz';
+            $tarOpts = 'czf';
         }
         else {
-            $tarOpts = 'chfz';
+            $tarOpts = 'chzf';
         }
 
 # prevents tar's output of "Removing leading /" and return total bytes of
@@ -278,6 +279,29 @@ sub createArchiv($$$) {
         Log( 1, $msg );
         $ret .= "\n" . $msg;
     }
+
+    return $ret;
+}
+
+sub addLogPathToPathnameArray($) {
+    my $modpath = shift;
+
+    my $ret;    
+    my @logpathname;
+
+    foreach my $logFile (devspec2array('TYPE=FileLog')) {
+        my $logpath = InternalVal($logFile,'logfile','');
+        if ( $logpath =~ m#^(.+?)\/[\w]+\.log$# ) {
+            push( @logpathname, ( $1 =~ m/^$modpath\// ? $1 : './'.$1 ) ) if ( $1 ne './log' );
+        }
+    }
+
+    push( @pathname, @logpathname);
+
+    ### remove double entries from pathname array
+    my %all=();
+    @all{@pathname}=1;
+    @pathname = keys %all;
 
     return $ret;
 }

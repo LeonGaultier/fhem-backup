@@ -32,10 +32,12 @@ use FHEM::Meta;
 
 #####################################
 sub backup_Initialize($$) {
-    my %hash = (  Fn => 'FHEM::backup::CommandBackup',
-        Hlp => ',create a backup of fhem configuration, state and modpath' );
+    my %hash = (
+        Fn  => 'FHEM::backup::CommandBackup',
+        Hlp => ',create a backup of fhem configuration, state and modpath'
+    );
     $cmds{backup} = \%hash;
-    
+
     return FHEM::Meta::InitMod( __FILE__, \%hash );
 }
 
@@ -71,35 +73,36 @@ BEGIN {
 my @pathname;
 
 sub CommandBackup($$) {
-    my ($cl, $param) = @_;
+    my ( $cl, $param ) = @_;
 
-    my $byUpdate    = ($param && $param eq 'startedByUpdate');
-    my $modpath     = AttrVal('global', 'modpath', '');
-    my $configfile  = AttrVal('global', 'configfile', '');
-    my $statefile   = AttrVal('global', 'statefile', '');
-    my $logDir      = AttrVal('global', 'logdir', 'none');
-    my $now         = gettimeofday();
-    my @t           = localtime($now);
-    $statefile      = ResolveDateWildcards($statefile, @t);
+    my $byUpdate = ( $param && $param eq 'startedByUpdate' );
+    my $modpath    = AttrVal( 'global', 'modpath',    '' );
+    my $configfile = AttrVal( 'global', 'configfile', '' );
+    my $statefile  = AttrVal( 'global', 'statefile',  '' );
+    my $logDir     = AttrVal( 'global', 'logdir',     'none' );
+    my $now        = gettimeofday();
+    my @t          = localtime($now);
+    $statefile = ResolveDateWildcards( $statefile, @t );
 
     # prevent duplicate entries in backup list for default config, forum #54826
-    $configfile = '' if ($configfile eq 'fhem.cfg' || configDBUsed());
-    $statefile  = '' if ($statefile  eq './log/fhem.save');
+    $configfile = '' if ( $configfile eq 'fhem.cfg' || configDBUsed() );
+    $statefile = '' if ( $statefile eq './log/fhem.save' );
     my $msg;
     my $ret;
 
-    Log(1, 'NOTE: make sure you have a database backup!') if(configDBUsed());
+    Log( 1, 'NOTE: make sure you have a database backup!' )
+      if ( configDBUsed() );
 
     # set backupdir
     my $backupdir;
-    if (!defined($attr{global}{backupdir})) {
+    if ( !defined( $attr{global}{backupdir} ) ) {
         $backupdir = $modpath . '/backup';
     }
     else {
-        if ($attr{global}{backupdir} =~ m/^\/.*/) {
+        if ( $attr{global}{backupdir} =~ m/^\/.*/ ) {
             $backupdir = $attr{global}{backupdir};
         }
-        elsif ($attr{global}{backupdir} =~ m/^\.+\/.*/) {
+        elsif ( $attr{global}{backupdir} =~ m/^\.+\/.*/ ) {
             $backupdir = $modpath . '/' . $attr{global}{backupdir};
         }
         else {
@@ -108,8 +111,8 @@ sub CommandBackup($$) {
     }
 
     # create backupdir if not exists
-    if (!-d $backupdir) {
-        Log(4, 'backup create backupdir: ' . $backupdir);
+    if ( !-d $backupdir ) {
+        Log( 4, 'backup create backupdir: ' . $backupdir );
         $ret = `(mkdir -p $backupdir) 2>&1`;
         if ($ret) {
             chomp($ret);
@@ -118,27 +121,28 @@ sub CommandBackup($$) {
         }
     }
 
-    if(configDBUsed()) {
+    if ( configDBUsed() ) {
+
         # add configDB configuration file
-        push(@pathname, 'configDB.conf');
-        Log(4, 'backup include: \'configDB.conf\'');
+        push( @pathname, 'configDB.conf' );
+        Log( 4, 'backup include: \'configDB.conf\'' );
     }
     else {
         # get pathnames to archiv
-        push(@pathname, $configfile) if($configfile);
-        Log(4, 'backup include: ' . $configfile);
+        push( @pathname, $configfile ) if ($configfile);
+        Log( 4, 'backup include: ' . $configfile );
         $ret = parseConfig($configfile);
-        push(@pathname, $statefile) if($statefile);
-        Log(4, 'backup include: ' . $statefile);
+        push( @pathname, $statefile ) if ($statefile);
+        Log( 4, 'backup include: ' . $statefile );
     }
-    
-    $ret = readModpath($modpath,$backupdir);
+
+    $ret = readModpath( $modpath, $backupdir );
 
     ## add extra logdir path to backup
-    push(@pathname, $logDir) if($logDir ne 'none');
-    
+    push( @pathname, $logDir ) if ( $logDir ne 'none' );
+
     # create archiv
-    $ret = createArchiv($backupdir, $cl, $byUpdate);
+    $ret = createArchiv( $backupdir, $cl, $byUpdate );
 
     @pathname = [];
     undef @pathname;
@@ -150,65 +154,75 @@ sub parseConfig($);
 
 sub parseConfig($) {
     my $configfile = shift;
+
     # we need default value to read included files
     $configfile = $configfile ? $configfile : 'fhem.cfg';
     my $fh;
     my $msg;
     my $ret;
 
-    if (!open($fh,$configfile)) {
+    if ( !open( $fh, $configfile ) ) {
         $msg = 'Can\'t open ' . $configfile . ': ' . $!;
-        Log(1, 'backup ' . $msg);
+        Log( 1, 'backup ' . $msg );
         return $msg;
     }
 
-    while (my $l = <$fh>) {
+    while ( my $l = <$fh> ) {
         $l =~ s/[\r\n]//g;
-        if ($l =~ m/^\s*include\s+(\S+)\s*.*$/) {
-            if (-e $1) {
-            push @pathname, $1;
-            Log(4, 'backup include: ' . $1);
-            $ret = parseConfig($1);
+        if ( $l =~ m/^\s*include\s+(\S+)\s*.*$/ ) {
+            if ( -e $1 ) {
+                push @pathname, $1;
+                Log( 4, 'backup include: ' . $1 );
+                $ret = parseConfig($1);
             }
             else {
-            Log(1, 'backup configfile: ' . $1 . ' does not exists! File not included.');
+                Log( 1,
+                        'backup configfile: '
+                      . $1
+                      . ' does not exists! File not included.' );
             }
         }
     }
-    
+
     close $fh;
     return $ret;
 }
 
 sub readModpath($$) {
-    my ($modpath,$backupdir) = @_;
+    my ( $modpath, $backupdir ) = @_;
     my $msg;
     my $ret;
 
-    if (!opendir(DH, $modpath)) {
+    if ( !opendir( DH, $modpath ) ) {
         $msg = 'Can\'t open $modpath: ' . $!;
-        Log(1, 'backup ' . $msg);
+        Log( 1, 'backup ' . $msg );
         return $msg;
     }
-    
+
     my @files = <$modpath/*>;
     foreach my $file (@files) {
-        if ($file eq $backupdir && (-d $file || -l $file)) {
-            Log(4, 'backup exclude: ' . $file);
+        if ( $file eq $backupdir && ( -d $file || -l $file ) ) {
+            Log( 4, 'backup exclude: ' . $file );
         }
         else {
-            Log(4, 'backup include: ' . $file);
+            Log( 4, 'backup include: ' . $file );
             push @pathname, $file;
         }
     }
-    
+
     return $ret;
 }
 
 sub createArchiv($$$) {
-    my ($backupdir,$cl,$byUpdate) = @_;
-    my $backupcmd = (!defined($attr{global}{backupcmd}) ? undef : $attr{global}{backupcmd});
-    my $symlink = (!defined($attr{global}{backupsymlink}) ? 'no' : $attr{global}{backupsymlink});
+    my ( $backupdir, $cl, $byUpdate ) = @_;
+    my $backupcmd =
+      (  !defined( $attr{global}{backupcmd} )
+        ? undef
+        : $attr{global}{backupcmd} );
+    my $symlink =
+      ( !defined( $attr{global}{backupsymlink} )
+        ? 'no'
+        : $attr{global}{backupsymlink} );
     my $tarOpts;
     my $msg;
     my $ret;
@@ -219,49 +233,50 @@ sub createArchiv($$$) {
 
     my $pathlist = join( '" "', @pathname );
 
-    my $cmd='';
-    if (!defined($backupcmd)) {
-        if (lc($symlink) eq 'no') {
+    my $cmd = '';
+    if ( !defined($backupcmd) ) {
+        if ( lc($symlink) eq 'no' ) {
             $tarOpts = 'cf';
         }
         else {
             $tarOpts = 'chf';
         }
 
-        # prevents tar's output of "Removing leading /" and return total bytes of
-        # archive
-    #     $cmd = "tar -$tarOpts - \"$pathlist\" |gzip > $backupdir/FHEM-$dateTime.tar.gz";
+# prevents tar's output of "Removing leading /" and return total bytes of
+# archive
+#     $cmd = "tar -$tarOpts - \"$pathlist\" |gzip > $backupdir/FHEM-$dateTime.tar.gz";
         $cmd = "tar $tarOpts $backupdir/FHEM-$dateTime.tar.gz \"$pathlist\"";
     }
     else {
         $cmd = $backupcmd . ' \"' . $pathlist . '\"';
     }
-    
-    Log(2, 'Backup with command: ' . $cmd);
-    if(!$fhemForked && !$byUpdate) {
+
+    Log( 2, 'Backup with command: ' . $cmd );
+    if ( !$fhemForked && !$byUpdate ) {
         use Blocking;
         our $BC_telnetDevice;
         BC_searchTelnet('backup');
         my $tp = $defs{$BC_telnetDevice}{PORT};
 
-        system("($cmd; echo Backup done;".
-                    "$^X $0 localhost:$tp 'trigger global backup done')2>&1 &");
-        return "Started the backup in the background, watch the log for details";
+        system( "($cmd; echo Backup done;"
+              . "$^X $0 localhost:$tp 'trigger global backup done')2>&1 &" );
+        return
+          "Started the backup in the background, watch the log for details";
     }
-    
+
     $ret = `($cmd) 2>&1`;
 
-    if($ret) {
+    if ($ret) {
         chomp $ret;
-        Log(1, 'backup ' . $ret);
+        Log( 1, 'backup ' . $ret );
     }
-    
-    if (!defined($backupcmd) && -e "$backupdir/FHEM-$dateTime.tar.gz") {
+
+    if ( !defined($backupcmd) && -e "$backupdir/FHEM-$dateTime.tar.gz" ) {
         my $size = -s "$backupdir/FHEM-$dateTime.tar.gz";
         $msg = "backup done: FHEM-$dateTime.tar.gz ($size Bytes)";
-        DoTrigger('global', $msg);
-        Log(1, $msg);
-        $ret .= "\n".$msg;
+        DoTrigger( 'global', $msg );
+        Log( 1, $msg );
+        $ret .= "\n" . $msg;
     }
 
     return $ret;

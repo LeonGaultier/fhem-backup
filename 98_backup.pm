@@ -2,7 +2,7 @@
 # Developed with Kate
 #
 #  (c) 2012-2019 Copyright: Martin Fischer (m_fischer at gmx dot de)
-#  Maintained by Marko Oldenburg since 2019
+#  Rewrite and Maintained by Marko Oldenburg since 2019
 #  All rights reserved
 #
 #  This script free software; you can redistribute it and/or modify
@@ -68,7 +68,8 @@ BEGIN {
           BC_searchTelnet
           BC_telnetDevice
           DoTrigger
-          devspec2array)
+          devspec2array
+          configDB)
     );
 }
 
@@ -78,9 +79,10 @@ sub CommandBackup($$) {
     my ( $cl, $param ) = @_;
 
     my $byUpdate = ( $param && $param eq 'startedByUpdate' );
-    my $modpath    = AttrVal( 'global', 'modpath', '' );
-    my $configfile = AttrVal( 'global', 'configfile', '' );
-    my $statefile  = AttrVal( 'global', 'statefile',  '' );
+    my $modpath    = AttrVal( 'global', 'modpath', '.' );
+    my $configfile = AttrVal( 'global', 'configfile', $modpath . '/fhem.cfg' );
+    my $statefile  = AttrVal( 'global', 'statefile',  $modpath . '/log/fhem.save' );
+    my $dir        = AttrVal( 'global', 'backupdir', $modpath . '/backup');
     my $now        = gettimeofday();
     my @t          = localtime($now);
     $statefile = ResolveDateWildcards( $statefile, @t );
@@ -91,56 +93,23 @@ sub CommandBackup($$) {
     my $msg;
     my $ret;
 
+    my ($err,$backupdir) = createBackupDir( $dir, $modpath );
+
+    return Log( 1, 'ERROR: if create backup directory!' )
+        if ( defined($err) and $err );
+    
     Log( 1, 'NOTE: make sure you have a database backup!' )
       if ( configDBUsed() );
-
-    # set backupdir
-    my $backupdir;
-    if ( !defined( $attr{global}{backupdir} ) ) {
-        $backupdir = $modpath . '/backup';
-    }
-    else {
-        if ( $attr{global}{backupdir} =~ m/^\/.*/ ) {
-            $backupdir = $attr{global}{backupdir};
-        }
-        elsif ( $attr{global}{backupdir} =~ m/^\.+\/.*/ ) {
-            $backupdir = $modpath . '/' . $attr{global}{backupdir};
-        }
-        else {
-            $backupdir = $modpath . '/' . $attr{global}{backupdir};
-        }
-    }
-
-    # create backupdir if not exists
-    if ( !-d $backupdir ) {
-        Log( 4, 'backup create backupdir: ' . $backupdir );
-        $ret = `(mkdir -p $backupdir) 2>&1`;
-        if ($ret) {
-            chomp($ret);
-            $msg = 'backup: ' . $ret;
-            return $msg;
-        }
-    }
-
-    if ( configDBUsed() ) {
-
-        # add configDB configuration file
-        push( @pathname, 'configDB.conf' );
-        Log( 4, 'backup include: \'configDB.conf\'' );
-    }
-    else {
-        # get pathnames to archiv
-        push( @pathname, $configfile ) if ($configfile);
-        Log( 4, 'backup include: ' . $configfile );
-        $ret = parseConfig($configfile);
-        push( @pathname, $statefile ) if ($statefile);
-        Log( 4, 'backup include: ' . $statefile );
-    }
-
+    $ret = addConfDBFiles( $configfile, $statefile );
     $ret = readModpath( $modpath, $backupdir );
 
     ## add all logfile path to pathname array
     $ret = addLogPathToPathnameArray($modpath);
+
+    ### remove double entries from pathname array
+    my %all=();
+    @all{@pathname}=1;
+    @pathname = keys %all;
 
     # create archiv
     $ret = createArchiv( $backupdir, $cl, $byUpdate );
@@ -149,6 +118,58 @@ sub CommandBackup($$) {
     undef @pathname;
 
     return $ret;
+}
+
+sub addConfDBFiles($$) {
+    my ($configfile,$statefile) = @_;
+    my $ret;
+    
+    if ( configDBUsed() ) {
+        # add configDB configuration file
+        push( @pathname, 'configDB.conf' );
+        Log( 2, 'backup include: \'configDB.conf\'' );
+        
+        ## check if sqlite db file outside of modpath
+        if (  $configDB{type} eq 'SQLITE'
+          and defined($configDB{filename})
+          and $configDB{filename} !~ m#^[a-zA-Z].*|^\.\/[a-zA-Z].*# )
+        {
+            ## backup sqlite db file
+            Log( 2, 'backup include SQLite DB File: ' . $configDB{filename} );
+            push( @pathname, $configDB{filename} );
+        }
+    }
+    else {
+        # get pathnames to archiv
+        push( @pathname, $configfile ) if ($configfile);
+        Log( 2, 'backup include: ' . $configfile );
+        $ret = parseConfig($configfile);
+        push( @pathname, $statefile ) if ($statefile);
+        Log( 2, 'backup include: ' . $statefile );
+    }
+    
+    return $ret;
+}
+
+sub createBackupDir($$) {
+    my ($dir,$modpath)  = @_;
+    
+    my $msg;
+    my $ret;
+    my $backupdir = $dir =~ m#^\.(\/.*)$# ? $modpath.$1 : $dir =~ m#^\.\.\/# ? $modpath.'/'.$dir : $dir;
+
+    # create backupdir if not exists
+    if ( !-d $backupdir ) {
+        Log( 4, 'backup create backupdir: ' . $backupdir );
+        $ret = `(mkdir -p $backupdir) 2>&1`;
+        if ($ret) {
+            chomp($ret);
+            $msg = 'backup: ' . $ret;
+            return ($msg,undef);
+        }
+    }
+    
+    return (undef,$backupdir);
 }
 
 sub parseConfig($);
@@ -216,14 +237,8 @@ sub readModpath($$) {
 
 sub createArchiv($$$) {
     my ( $backupdir, $cl, $byUpdate ) = @_;
-    my $backupcmd =
-      (  !defined( $attr{global}{backupcmd} )
-        ? undef
-        : $attr{global}{backupcmd} );
-    my $symlink =
-      ( !defined( $attr{global}{backupsymlink} )
-        ? 'no'
-        : $attr{global}{backupsymlink} );
+    my $backupcmd = AttrVal('global','backupcmd',undef);
+    my $symlink = AttrVal('global','backupsymlink','no');
     my $tarOpts;
     my $msg;
     my $ret;
@@ -288,20 +303,20 @@ sub addLogPathToPathnameArray($) {
 
     my $ret;    
     my @logpathname;
+    my $extlogpath;
 
     foreach my $logFile (devspec2array('TYPE=FileLog')) {
         my $logpath = InternalVal($logFile,'logfile','');
         if ( $logpath =~ m#^(.+?)\/[\w]+\.log$# ) {
-            push( @logpathname, ( $1 =~ m/^$modpath\// ? $1 : './'.$1 ) ) if ( $1 ne './log' );
+            $extlogpath = $1;
+            if ( $1 =~ /^\/[A-Za-z]/ ) {
+                push( @logpathname, $extlogpath ) ;
+                Log( 2, 'external logpath include: ' . $extlogpath );
+            }
         }
     }
 
     push( @pathname, @logpathname);
-
-    ### remove double entries from pathname array
-    my %all=();
-    @all{@pathname}=1;
-    @pathname = keys %all;
 
     return $ret;
 }

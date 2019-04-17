@@ -104,7 +104,7 @@ sub CommandBackup($$) {
     $ret = readModpath( $modpath, $backupdir );
 
     ## add all logfile path to pathname array
-    $ret = addLogPathToPathnameArray($modpath);
+    $ret = addLogPathToPathnameArray();
 
     ### remove double entries from pathname array
     my %all=();
@@ -298,20 +298,25 @@ sub createArchiv($$$) {
     return $ret;
 }
 
-sub addLogPathToPathnameArray($) {
-    my $modpath = shift;
+sub addLogPathToPathnameArray() {
+#     my $modpath = shift;
 
     my $ret;    
     my @logpathname;
     my $extlogpath;
 
+    Log( 4, 'addLogPathToPathnameArray' );
+    
     foreach my $logFile (devspec2array('TYPE=FileLog')) {
-        my $logpath = InternalVal($logFile,'logfile','');
-        if ( $logpath =~ m#^(.+?)\/[\w]+\.log$# ) {
+        Log( 5, 'found logFiles: ' . $logFile );
+        my $logpath = InternalVal($logFile,'currentlogfile','');
+        Log( 4, 'found logpath: ' . $logpath );
+        if ( $logpath =~ m#^(.+?)\/[\_|\-|\w]+\.log$# ) {
             $extlogpath = $1;
+            Log( 4, 'found extlogpath: ' . $extlogpath );
             if ( $1 =~ /^\/[A-Za-z]/ ) {
                 push( @logpathname, $extlogpath ) ;
-                Log( 2, 'external logpath include: ' . $extlogpath );
+                Log( 4, 'external logpath include: ' . $extlogpath );
             }
         }
     }

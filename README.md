@@ -2,7 +2,7 @@
 
 ## Used branching model
 * Master branch: Production version (copy of [fhem/fhem-mirror/blob/master/fhem/FHEM/98_backup.pm](https://github.com/fhem/fhem-mirror/blob/master/fhem/FHEM/98_backup.pm)
-* Dev branch: Latest development version
+* Devel branch: Latest development version
 
 ## Community support
 The FHEM Forum is available [here](https://forum.fhem.de/) for general support.

@@ -5,6 +5,9 @@
 #  Rewrite and Maintained by Marko Oldenburg since 2019
 #  All rights reserved
 #
+#       Contributors:
+#         - Marko Oldenburg (CoolTux)
+#
 #  This script free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or

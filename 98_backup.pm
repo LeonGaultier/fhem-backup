@@ -1,7 +1,7 @@
 ################################################################
 # Developed with Kate
 #
-#  (c) 2012-2019 Copyright: Martin Fischer (m_fischer at gmx dot de)
+#  (c) 2012-2020 Copyright: Martin Fischer (m_fischer at gmx dot de)
 #  Rewrite and Maintained by Marko Oldenburg since 2019
 #  All rights reserved
 #

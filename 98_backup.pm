@@ -64,6 +64,7 @@ BEGIN {
           InternalVal
           gettimeofday
           ResolveDateWildcards
+          readingsSingleUpdate
           attr
           Log
           fhemForked
@@ -119,8 +120,17 @@ sub CommandBackup {
     @all{@pathname}=1;
     @pathname = keys %all;
 
-    # create archiv
+    ### create archiv
     $ret = createArchiv( $backupdir, $cl, $byUpdate, $dateTime );
+    
+    ### support for backupToStorage Modul
+    readingsSingleUpdate($defs{join(' ',
+        devspec2array('TYPE=backupToStorage'))}
+        , 'fhemBackupFile'
+        , "$backupdir/FHEM-$dateTime.tar.gz"
+        , 0
+    )
+        if ( devspec2array('TYPE=backupToStorage') > 0 );
 
     @pathname = [];
     undef @pathname;

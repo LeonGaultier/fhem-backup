@@ -34,11 +34,13 @@ use warnings;
 use FHEM::Meta;
 
 #####################################
-sub backup_Initialize($$) {
+sub backup_Initialize {
+
     my %hash = (
         Fn  => 'FHEM::backup::CommandBackup',
         Hlp => ',create a backup of fhem configuration, state and modpath'
     );
+
     $cmds{backup} = \%hash;
 
     return FHEM::Meta::InitMod( __FILE__, \%hash );
@@ -78,21 +80,24 @@ BEGIN {
 
 my @pathname;
 
-sub CommandBackup($$) {
-    my ( $cl, $param ) = @_;
+sub CommandBackup {
+    my $cl          = shift;
+    my $param       = shift;
 
-    my $byUpdate = ( $param && $param eq 'startedByUpdate' );
-    my $modpath    = AttrVal( 'global', 'modpath', '.' );
-    my $configfile = AttrVal( 'global', 'configfile', $modpath . '/fhem.cfg' );
-    my $statefile  = AttrVal( 'global', 'statefile',  $modpath . '/log/fhem.save' );
-    my $dir        = AttrVal( 'global', 'backupdir', $modpath . '/backup');
-    my $now        = gettimeofday();
-    my @t          = localtime($now);
-    $statefile = ResolveDateWildcards( $statefile, @t );
+    my $byUpdate    = ( $param && $param eq 'startedByUpdate' );
+    my $modpath     = AttrVal( 'global', 'modpath', '.' );
+    my $configfile  = AttrVal( 'global', 'configfile', $modpath . '/fhem.cfg' );
+    my $statefile   = AttrVal( 'global', 'statefile',  $modpath . '/log/fhem.save' );
+    my $dir         = AttrVal( 'global', 'backupdir', $modpath . '/backup');
+    my $now         = gettimeofday();
+    my @t           = localtime($now);
+    my $dateTime    = dateTime();
+
+    $statefile      = ResolveDateWildcards( $statefile, @t );
 
     # prevent duplicate entries in backup list for default config, forum #54826
     $configfile = '' if ( $configfile eq 'fhem.cfg' || configDBUsed() );
-    $statefile = '' if ( $statefile eq './log/fhem.save' );
+    $statefile  = '' if ( $statefile eq './log/fhem.save' );
     my $msg;
     my $ret;
 
@@ -115,7 +120,7 @@ sub CommandBackup($$) {
     @pathname = keys %all;
 
     # create archiv
-    $ret = createArchiv( $backupdir, $cl, $byUpdate );
+    $ret = createArchiv( $backupdir, $cl, $byUpdate, $dateTime );
 
     @pathname = [];
     undef @pathname;
@@ -123,8 +128,10 @@ sub CommandBackup($$) {
     return $ret;
 }
 
-sub addConfDBFiles($$) {
-    my ($configfile,$statefile) = @_;
+sub addConfDBFiles {
+    my $configfile  = shift;
+    my $statefile   = shift;
+
     my $ret;
     
     if ( configDBUsed() ) {
@@ -154,8 +161,9 @@ sub addConfDBFiles($$) {
     return $ret;
 }
 
-sub createBackupDir($$) {
-    my ($dir,$modpath)  = @_;
+sub createBackupDir {
+    my $dir     = shift;
+    my $modpath = shift;
     
     my $msg;
     my $ret;
@@ -175,9 +183,7 @@ sub createBackupDir($$) {
     return (undef,$backupdir);
 }
 
-sub parseConfig($);
-
-sub parseConfig($) {
+sub parseConfig {
     my $configfile = shift;
 
     # we need default value to read included files
@@ -213,8 +219,10 @@ sub parseConfig($) {
     return $ret;
 }
 
-sub readModpath($$) {
-    my ( $modpath, $backupdir ) = @_;
+sub readModpath {
+    my $modpath     = shift;
+    my $backupdir   = shift;
+
     my $msg;
     my $ret;
 
@@ -238,17 +246,22 @@ sub readModpath($$) {
     return $ret;
 }
 
-sub createArchiv($$$) {
-    my ( $backupdir, $cl, $byUpdate ) = @_;
-    my $backupcmd = AttrVal('global','backupcmd',undef);
-    my $symlink = AttrVal('global','backupsymlink','no');
-    my $tarOpts;
-    my $msg;
-    my $ret;
-
+sub dateTime {
     my $dateTime = TimeNow();
     $dateTime =~ s/ /_/g;
     $dateTime =~ s/(:|-)//g;
+    
+    return $dateTime;
+}
+
+sub createArchiv {
+    my ($backupdir, $cl, $byUpdate, $dateTime) = @_;
+
+    my $backupcmd   = AttrVal('global','backupcmd',undef);
+    my $symlink     = AttrVal('global','backupsymlink','no');
+    my $tarOpts;
+    my $msg;
+    my $ret;
 
     my $pathlist = join( '" "', @pathname );
 
@@ -263,7 +276,6 @@ sub createArchiv($$$) {
 
 # prevents tar's output of "Removing leading /" and return total bytes of
 # archive
-#     $cmd = "tar -$tarOpts - \"$pathlist\" |gzip > $backupdir/FHEM-$dateTime.tar.gz";
         $cmd = "tar $tarOpts $backupdir/FHEM-$dateTime.tar.gz \"$pathlist\"";
     }
     else {
@@ -279,6 +291,7 @@ sub createArchiv($$$) {
 
         system( "($cmd; echo Backup done;"
               . "$^X $0 localhost:$tp 'trigger global backup done')2>&1 &" );
+
         return
           "Started the backup in the background, watch the log for details";
     }
@@ -301,9 +314,7 @@ sub createArchiv($$$) {
     return $ret;
 }
 
-sub addLogPathToPathnameArray() {
-#     my $modpath = shift;
-
+sub addLogPathToPathnameArray {
     my $ret;    
     my @logpathname;
     my $extlogpath;
@@ -380,7 +391,7 @@ sub addLogPathToPathnameArray() {
   "release_status": "stable",
   "license": "GPL_2",
   "author": [
-    "Marko Oldenburg <leongaultier@gmail.com>"
+    "Marko Oldenburg <fhemsupport@cooltux.net>"
   ],
   "x_fhem_maintainer": [
     "CoolTux"

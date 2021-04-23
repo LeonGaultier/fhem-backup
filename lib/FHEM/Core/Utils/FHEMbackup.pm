@@ -67,12 +67,12 @@ sub CommandBackup {
     $ret = addConfDBFiles( $configfile, $statefile );
     return ::Log(1, qq(Backup ERROR - addConfDBFiles: $ret))
       if ( defined($ret)
-        && $ret =~ m{\ACan\'t open.*}xms);
+        && $ret =~ m{\ACan\'t\sopen.*}xms);
     
     $ret = readModpath( $modpath, $backupdir );
     return ::Log(1, qq(Backup ERROR - readModpath: $ret))
       if ( defined($ret)
-        && $ret =~ m{\ACan\'t open.*}xms);
+        && $ret =~ m{\ACan\'t\sopen.*}xms);
 
     ## add all logfile path to pathname array
     $ret = addLogPathToPathnameArray();

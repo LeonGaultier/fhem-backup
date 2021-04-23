@@ -32,7 +32,6 @@ package FHEM::Core::Utils::FHEMbackup;
 
 use strict;
 use warnings;
-use FHEM::Meta;
 
 
 my @pathname;

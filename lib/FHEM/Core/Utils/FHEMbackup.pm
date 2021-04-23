@@ -28,27 +28,7 @@
 #
 ################################################################
 
-package main;
-use strict;
-use warnings;
-use FHEM::Meta;
-
-#####################################
-sub backup_Initialize {
-
-    my %hash = (
-        Fn  => \&FHEM::backup::CommandBackup,
-        Hlp => ',create a backup of fhem configuration, state and modpath'
-    );
-
-    $cmds{backup} = \%hash;
-
-    return FHEM::Meta::InitMod( __FILE__, \%hash );
-}
-
-######################################
-## unserer packagename
-package FHEM::backup;
+package FHEM::Core::Utils::FHEMbackup;
 
 use strict;
 use warnings;
@@ -334,78 +314,3 @@ sub addLogPathToPathnameArray {
 }
 
 1;
-
-=pod
-=item command
-=item summary    create a backup of the FHEM installation
-=item summary_DE erzeugt eine Sicherungsdatei der FHEM Installation
-=begin html
-
-<a name="backup"></a>
-<h3>backup</h3>
-<ul>
-  <code>backup</code><br>
-  <br>
-  The complete FHEM directory (containing the modules), the WebInterface
-  pgm2 (if installed) and the config-file will be saved into a .tar.gz
-  file by default. The file is stored with a timestamp in the
-  <a href="#modpath">modpath</a>/backup directory or to a directory
-  specified by the global Attribute <a href="#backupdir">backupdir</a>.<br>
-  Note: tar and gzip must be installed to use this feature.
-  <br>
-  <br>
-  If you need to call tar with support for symlinks, you could set the
-  global Attribute <a href="#backupsymlink">backupsymlink</a> to everything
-  else as "no".
-  <br>
-  <br>
-  You could pass the backup to your own command / script by using the
-  global ::attribute <a href="#backupcmd">backupcmd</a>.
-  <br>
-  <br>
-</ul>
-
-=end html
-
-=for :application/json;q=META.json 98_backup.pm
-{
-  "abstract": "Modul to retrieves apt information about Debian update state",
-  "x_lang": {
-    "de": {
-      "abstract": "Modul um apt Updateinformationen von Debian Systemen zu bekommen"
-    }
-  },
-  "keywords": [
-    "fhem-mod-device",
-    "fhem-core",
-    "backup",
-    "tar"
-  ],
-  "release_status": "stable",
-  "license": "GPL_2",
-  "author": [
-    "Marko Oldenburg <fhemsupport@cooltux.net>"
-  ],
-  "x_fhem_maintainer": [
-    "CoolTux"
-  ],
-  "x_fhem_maintainer_github": [
-    "LeonGaultier"
-  ],
-  "prereqs": {
-    "runtime": {
-      "requires": {
-        "FHEM": 5.00918799,
-        "perl": 5.016, 
-        "Meta": 0
-      },
-      "recommends": {
-      },
-      "suggests": {
-      }
-    }
-  }
-}
-=end :application/json;q=META.json
-
-=cut

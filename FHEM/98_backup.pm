@@ -99,8 +99,9 @@ sub backup_Initialize {
   ],
   "release_status": "stable",
   "license": "GPL_2",
+  "version": "v2.0.1",
   "author": [
-    "Marko Oldenburg <fhemsupport@cooltux.net>"
+    "Marko Oldenburg <fhemdevelopment@cooltux.net>"
   ],
   "x_fhem_maintainer": [
     "CoolTux"
